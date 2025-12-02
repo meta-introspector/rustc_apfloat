@@ -65,7 +65,7 @@ fn limbs_for_bits(bits: usize) -> usize {
 ///
 /// Note: the choice of type described above, and the factors in its decision,
 /// are specific to `Limb` being `u128`, so if `Limb` changes, this should too.
-type DynPrecisionLimbVec = smallvec::SmallVec<[Limb; 2]>;
+type DynPrecisionLimbVec = smallvec::SmallVec<Limb, 2>;
 
 /// Enum that represents what fraction of the LSB truncated bits of an fp number
 /// represent.
@@ -629,7 +629,7 @@ impl<S: Semantics> fmt::Display for IeeeFloat<S> {
         }
 
         // Fill the buffer.
-        let mut buffer = smallvec::SmallVec::<[u8; 64]>::new();
+        let mut buffer = smallvec::SmallVec::<u8, 64>::new();
 
         // Ignore digits from the significand until it is no more
         // precise than is required for the desired precision.
@@ -2651,20 +2651,20 @@ impl<S: Semantics> IeeeFloat<S> {
 
                 let i = bits / LIMB_BITS;
                 let limb = sig_calc[i] & (!0 >> (LIMB_BITS - 1 - bits % LIMB_BITS));
-                let boundary = match round {
+                let boundary: i32 = match round {
                     Round::NearestTiesToEven | Round::NearestTiesToAway => 1 << (bits % LIMB_BITS),
                     _ => 0,
                 };
                 if i == 0 {
-                    let delta = limb.wrapping_sub(boundary);
+                    let delta = limb.wrapping_sub(boundary.try_into().unwrap());
                     cmp::min(delta, delta.wrapping_neg())
-                } else if limb == boundary {
+                } else if limb == boundary.try_into().unwrap() {
                     if !sig::is_all_zeros(&sig_calc[1..i]) {
                         !0 // A lot.
                     } else {
                         sig_calc[0]
                     }
-                } else if limb == boundary.wrapping_sub(1) {
+                } else if limb == boundary.wrapping_sub(1).try_into().unwrap() {
                     if sig_calc[1..i].iter().any(|&x| x.wrapping_neg() != 1) {
                         !0 // A lot.
                     } else {
